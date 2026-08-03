@@ -51,6 +51,10 @@ Tiers come solely from `config.yaml`: ACTIVE through 14 days, OCCASIONAL through
 streamlit run app.py
 ```
 
+## Cloudflare hosted edition
+
+The `cloudflare/` directory contains the public, zero-budget hosted edition using Workers Static Assets and D1. It uses a BYOK model so provider credentials are used for one run and never stored. See `cloudflare/README.md` for deployment commands.
+
 Upload a CSV, inspect validation results and estimated cost, tune provider/concurrency/cache/tier settings, then start. Results can be filtered/sorted and downloaded as CSV or XLSX. The provider key is read from `.env`; when absent, a masked sidebar field appears.
 
 ## Mocked demo and tests
@@ -67,4 +71,3 @@ Input is `examples/prospects.csv`; output is `examples/demo_activity.csv`. Tests
 ## Output fields
 
 Alongside all original columns: `last_activity_date`, `days_since_last_activity`, post counts for 30/90/180 days, repost/comment/reaction counts, available activity total, follower/connection counts, headline/company/title, `activity_tier`, `activity_note`, and `fetch_error`. A blank count means the provider did not expose that activity type.
-

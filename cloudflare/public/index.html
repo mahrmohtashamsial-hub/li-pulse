@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Classify LinkedIn prospects by recent activity without browser scraping.">
+  <title>li-pulse — LinkedIn activity scoring</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header><div><strong>li-pulse</strong><span>Prospect activity intelligence</span></div><span class="safe">No scraping · BYOK</span></header>
+  <main>
+    <section class="hero"><p class="eyebrow">FOR BDR TEAMS</p><h1>Know who is worth reaching on LinkedIn.</h1><p>Upload prospect URLs and classify active, occasional, dormant, and inactive accounts using your own data-provider key.</p></section>
+    <section class="card">
+      <h2>1. Upload prospects</h2>
+      <label class="upload">CSV containing a <code>linkedin_url</code> column<input id="file" type="file" accept=".csv"></label>
+      <div id="validation" class="muted">No file selected.</div>
+      <div id="preview" class="table-wrap"></div>
+    </section>
+    <section class="card">
+      <h2>2. Configure</h2>
+      <div class="grid">
+        <label>Provider<select id="provider"><option value="mock">Mock demo</option><option value="apify">Apify</option><option value="brightdata">Bright Data</option><option value="proxycurl">Proxycurl</option></select></label>
+        <label>Provider API key<input id="apiKey" type="password" autocomplete="off" placeholder="Used for this run only"></label>
+        <label>Cache max age<input id="maxAge" type="number" value="14" min="0" max="365"></label>
+        <label>ACTIVE max days<input id="active" type="number" value="14" min="0"></label>
+        <label>OCCASIONAL max days<input id="occasional" type="number" value="60" min="1"></label>
+        <label>DORMANT max days<input id="dormant" type="number" value="180" min="2"></label>
+      </div>
+      <p class="privacy">Your provider key is transmitted over HTTPS for this run and is never stored in our database or browser storage.</p>
+      <button id="start" disabled>Analyze profiles</button>
+      <div id="status" class="status"></div>
+    </section>
+    <section id="resultsCard" class="card hidden">
+      <div class="results-head"><div><h2>3. Results</h2><div id="counts"></div></div><div><select id="tierFilter"><option>ALL</option><option>ACTIVE</option><option>OCCASIONAL</option><option>DORMANT</option><option>INACTIVE</option><option>UNKNOWN</option></select><button id="download">Download CSV</button></div></div>
+      <div id="results" class="table-wrap"></div>
+    </section>
+  </main>
+  <footer>li-pulse uses third-party provider APIs. It does not use LinkedIn cookies or browser scraping.</footer>
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
+

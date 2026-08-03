@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "li-pulse",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-31",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "li-pulse",
+      "database_id": "09eee04b-69ac-44c2-b2ef-79a5d9976bd6",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "MAX_PROFILES_PER_RUN": "100"
+  }
+}
+

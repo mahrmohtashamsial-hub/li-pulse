@@ -10,3 +10,5 @@ data/raw/*.json
 logs/*.log
 supabase/functions/.env
 *.xlsx
+cloudflare/node_modules/
+cloudflare/.wrangler/
