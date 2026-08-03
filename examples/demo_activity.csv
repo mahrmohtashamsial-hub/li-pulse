@@ -1,0 +1,4 @@
+﻿name,account,linkedin_url,last_activity_date,days_since_last_activity,posts_last_30d,posts_last_90d,posts_last_180d,reposts_last_90d,comments_last_90d,reactions_last_90d,total_activity_last_90d,follower_count,connection_count,headline,current_company,current_title,activity_tier,activity_note,fetch_error
+Ada Lovelace,Analytical Engines,https://www.linkedin.com/in/ada-lovelace,2026-07-30,3,1,1,1,0,0,,1,,,Mathematician,Analytical Engines,,ACTIVE,"Posted 1x in last 30d, last active 3 days ago",
+Grace Hopper,US Navy,https://www.linkedin.com/in/grace-hopper,2026-06-23,40,0,1,1,0,,,1,,,Computer pioneer,US Navy,,OCCASIONAL,"Posted 0x in last 30d, last active 40 days ago",
+Linus Torvalds,Linux Foundation,https://www.linkedin.com/in/linustorvalds,,,0,0,0,0,0,,0,,,Software engineer,Linux Foundation,,INACTIVE,No activity in last 180d,

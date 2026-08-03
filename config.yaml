@@ -1,0 +1,28 @@
+provider: apify
+workers: 5
+max_age_days: 14
+confirm_cost_above_usd: 10.00
+tiers:
+  active_max_days: 14
+  occasional_max_days: 60
+  dormant_max_days: 180
+providers:
+  apify:
+    api_key_env: APIFY_API_KEY
+    base_url: https://api.apify.com/v2
+    actor_id: dev_fusion~linkedin-profile-scraper
+    cost_per_profile_usd: 0.01
+  brightdata:
+    api_key_env: BRIGHTDATA_API_KEY
+    base_url: https://api.brightdata.com
+    dataset_id: SET_ME
+    cost_per_profile_usd: 0.01
+  proxycurl:
+    api_key_env: PROXYCURL_API_KEY
+    base_url: https://nubela.co/proxycurl/api
+    cost_per_profile_usd: 0.01
+  mock:
+    api_key_env: MOCK_API_KEY
+    base_url: https://mock.li-pulse.test
+    cost_per_profile_usd: 0.00
+

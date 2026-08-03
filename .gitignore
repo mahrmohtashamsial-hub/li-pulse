@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.testdeps/
+work/
+outputs/
+data/raw/*.json
+logs/*.log
+supabase/functions/.env
+*.xlsx
