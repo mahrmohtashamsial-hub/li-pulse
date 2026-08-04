@@ -18,6 +18,23 @@
       "migrations_dir": "migrations"
     }
   ],
+  "secrets_store_secrets": [
+    {
+      "binding": "APIFY_TOKEN",
+      "store_id": "8cf6d4c81cf7408c8d30d2efa037ebdd",
+      "secret_name": "APIFY_TOKEN"
+    },
+    {
+      "binding": "APIFY_WEBHOOK_SECRET",
+      "store_id": "8cf6d4c81cf7408c8d30d2efa037ebdd",
+      "secret_name": "APIFY_WEBHOOK_SECRET"
+    },
+    {
+      "binding": "TURNSTILE_SECRET",
+      "store_id": "8cf6d4c81cf7408c8d30d2efa037ebdd",
+      "secret_name": "li-pulse-turnstile"
+    }
+  ],
   "vars": {
     "MAX_PROFILES_PER_RUN": "100",
     "JOB_MAX_DURATION_MINUTES": "30"
