@@ -88,7 +88,8 @@ function calculateMetrics(raw: Record<string, unknown>, thresholds: Thresholds) 
 
 async function providerRequest(provider: ProviderName, linkedinUrl: string, apiKey: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
   if (provider === "mock") {
-    const age = linkedinUrl.includes("active") ? 3 : linkedinUrl.includes("occasional") ? 40 : 999;
+    const slug = linkedinUrl.split("/").filter(Boolean).at(-1)?.toLowerCase() || "";
+    const age = slug.startsWith("inactive") ? 999 : slug.startsWith("occasional") ? 40 : slug.startsWith("active") ? 3 : 999;
     return { posts: age <= 180 ? [new Date(Date.now() - age * 86_400_000).toISOString()] : [], reposts: [], comments: [], headline: "Mock profile" };
   }
   if (!apiKey) throw new Error("Provider API key is required");
@@ -192,4 +193,3 @@ export default {
     return env.ASSETS.fetch(request);
   },
 } satisfies ExportedHandler<Env>;
-
