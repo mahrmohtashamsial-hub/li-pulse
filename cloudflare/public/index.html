@@ -14,38 +14,69 @@
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
-  <header><div><strong>li-pulse</strong><span>Prospect activity intelligence</span></div><span class="safe">No scraping · BYOK</span></header>
-  <main>
-    <section class="hero"><p class="eyebrow">FOR BDR TEAMS</p><h1>Know who is worth reaching on LinkedIn.</h1><p>Upload prospect URLs and classify active, occasional, dormant, and inactive accounts using your own data-provider key.</p></section>
-    <section class="card">
-      <h2>1. Upload prospects</h2>
-      <label class="upload">CSV containing a <code>linkedin_url</code> column<input id="file" type="file" accept=".csv"></label>
-      <div id="validation" class="muted">No file selected.</div>
-      <div id="preview" class="table-wrap"></div>
-    </section>
-    <section class="card">
-      <h2>2. Configure</h2>
-      <div class="grid">
-        <label>Provider<select id="provider"><option value="mock">Mock demo</option><option value="apify">Apify</option><option value="brightdata">Bright Data</option><option value="proxycurl">Proxycurl</option></select></label>
-        <label>Provider API key<input id="apiKey" type="password" autocomplete="off" placeholder="Used for this run only"></label>
-        <label>Cache max age<input id="maxAge" type="number" value="14" min="0" max="365"></label>
-        <label>ACTIVE max days<input id="active" type="number" value="14" min="0"></label>
-        <label>OCCASIONAL max days<input id="occasional" type="number" value="60" min="1"></label>
-        <label>DORMANT max days<input id="dormant" type="number" value="180" min="2"></label>
+  <nav class="nav">
+    <a class="brand" href="#top" aria-label="li-pulse home"><span class="brand-mark">lp</span><span>li-pulse</span></a>
+    <div class="nav-tags"><span class="tag tag-accent">BYOK</span><span class="tag">No scraping</span></div>
+    <a class="btn btn-primary nav-cta" href="#configure">Analyze profiles</a>
+  </nav>
+
+  <main id="top">
+    <section class="hero section">
+      <div class="wrap">
+        <p class="kicker">For BDR teams</p>
+        <h1>Know who is worth reaching on LinkedIn.</h1>
+        <p class="hero-copy">Upload prospect URLs and classify active, occasional, dormant, and inactive accounts using your own data-provider key.</p>
+        <div class="hero-actions"><a class="btn btn-primary" href="#upload">Start scoring <span aria-hidden="true">→</span></a><a class="btn btn-ghost" href="#resultsCard">See results</a></div>
+        <div class="trust-row"><span><b>HTTPS</b> encrypted</span><span><b>Zero</b> LinkedIn cookies</span><span><b>Your</b> provider key</span></div>
       </div>
-      <p class="privacy">Your provider key is transmitted over HTTPS for this run and is never stored in our database or browser storage.</p>
-      <div class="turnstile-wrap">
-        <div class="cf-turnstile" data-sitekey="0x4AAAAAAEF6g0z_NurCOZQA" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-theme="light"></div>
-      </div>
-      <button id="start" disabled>Analyze profiles</button>
-      <div id="status" class="status"></div>
     </section>
-    <section id="resultsCard" class="card hidden">
-      <div class="results-head"><div><h2>3. Results</h2><div id="counts"></div></div><div><select id="tierFilter"><option>ALL</option><option>ACTIVE</option><option>OCCASIONAL</option><option>DORMANT</option><option>INACTIVE</option><option>UNKNOWN</option></select><button id="download">Download CSV</button></div></div>
-      <div id="results" class="table-wrap"></div>
+
+    <section class="section" id="upload">
+      <div class="wrap content-width">
+        <div class="step-heading"><span class="step-num">1</span><div><p class="step-label">Input</p><h2>Upload prospects</h2></div></div>
+        <div class="card upload-card">
+          <p class="filetype">CSV containing a <code>linkedin_url</code> column</p>
+          <label class="dropzone" for="file"><span class="upload-icon" aria-hidden="true">↑</span><strong>Drop your CSV here, or click to browse</strong><span>All original columns are preserved</span><input id="file" type="file" accept=".csv"></label>
+          <div id="validation" class="muted">No file selected.</div>
+          <div id="preview" class="table-wrap"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="configure">
+      <div class="wrap content-width">
+        <div class="step-heading"><span class="step-num">2</span><div><p class="step-label">Settings</p><h2>Configure analysis</h2></div></div>
+        <div class="card">
+          <div class="grid grid-main">
+            <label>Provider<select id="provider"><option value="mock">Mock demo</option><option value="apify">Apify</option><option value="brightdata">Bright Data</option><option value="proxycurl">Proxycurl</option></select></label>
+            <label>Provider API key<input id="apiKey" type="password" autocomplete="off" placeholder="Used for this run only"></label>
+          </div>
+          <div class="grid grid-thresholds">
+            <label>Cache max age <span>days</span><input id="maxAge" type="number" value="14" min="0" max="365"></label>
+            <label>ACTIVE max <span>days</span><input id="active" type="number" value="14" min="0"></label>
+            <label>OCCASIONAL max <span>days</span><input id="occasional" type="number" value="60" min="1"></label>
+            <label>DORMANT max <span>days</span><input id="dormant" type="number" value="180" min="2"></label>
+          </div>
+          <div class="privacy"><span aria-hidden="true">◇</span><p>Your provider key is transmitted over HTTPS for this run and is never stored in our database or browser storage.</p></div>
+          <div class="turnstile-wrap"><div class="cf-turnstile" data-sitekey="0x4AAAAAAEF6g0z_NurCOZQA" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-theme="dark"></div></div>
+          <button id="start" class="btn btn-primary btn-block" disabled>Analyze profiles <span aria-hidden="true">→</span></button>
+          <div id="status" class="status" role="status"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="resultsCard" class="section hidden">
+      <div class="wrap">
+        <div class="step-heading"><span class="step-num">3</span><div><p class="step-label">Output</p><h2>Results</h2></div></div>
+        <div class="card results-card">
+          <div class="results-head"><div id="counts" class="counts"></div><div class="results-actions"><label class="sr-only" for="tierFilter">Filter tier</label><select id="tierFilter"><option>ALL</option><option>ACTIVE</option><option>OCCASIONAL</option><option>DORMANT</option><option>INACTIVE</option><option>UNKNOWN</option></select><button id="download" class="btn btn-secondary">Download CSV ↓</button></div></div>
+          <div id="results" class="table-wrap"></div>
+        </div>
+      </div>
     </section>
   </main>
-  <footer>li-pulse uses third-party provider APIs. It does not use LinkedIn cookies or browser scraping.</footer>
+
+  <footer><div class="wrap"><span class="brand footer-brand"><span class="brand-mark">lp</span><span>li-pulse</span></span><p>Third-party provider APIs only. No LinkedIn cookies or browser scraping.</p></div></footer>
   <script src="/app.js" type="module"></script>
 </body>
 </html>
