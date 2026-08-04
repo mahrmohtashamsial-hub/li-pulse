@@ -34,11 +34,16 @@ $("file").addEventListener("change", async (event) => {
 });
 
 $("start").addEventListener("click", async () => {
+  if (!window.liPulseTurnstileToken) {
+    $("status").textContent = "Please complete the security check before starting.";
+    return;
+  }
   $("start").disabled = true; $("status").textContent = "Processing profiles…";
   try {
     const response = await fetch("/api/run", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
       rows, provider: $("provider").value, api_key: $("apiKey").value, max_age_days: +$("maxAge").value,
       active: +$("active").value, occasional: +$("occasional").value, dormant: +$("dormant").value,
+      turnstile_token: window.liPulseTurnstileToken,
     }) });
     const body = await response.json(); if (!response.ok) throw new Error(body.error || "Run failed");
     results = body.results; $("status").textContent = `Completed ${results.length} profiles; skipped ${body.skipped.length}.`;
@@ -46,10 +51,13 @@ $("start").addEventListener("click", async () => {
     $("counts").textContent = ["ACTIVE", "OCCASIONAL", "DORMANT", "INACTIVE", "UNKNOWN"].map((tier) => `${tier}: ${counts[tier]?.length || 0}`).join(" · ");
     $("resultsCard").classList.remove("hidden"); renderResults();
   } catch (error) { $("status").textContent = error.message; }
-  finally { $("start").disabled = false; }
+  finally {
+    window.liPulseTurnstileToken = "";
+    window.turnstile?.reset();
+    $("start").disabled = false;
+  }
 });
 
 function renderResults() { const tier = $("tierFilter").value; const shown = results.filter((item) => tier === "ALL" || item.activity_tier === tier).sort((a, b) => (a.days_since_last_activity ?? 1e9) - (b.days_since_last_activity ?? 1e9)); table(shown, $("results")); }
 $("tierFilter").addEventListener("change", renderResults);
 $("download").addEventListener("click", () => { const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([toCsv(results)], { type: "text/csv" })); link.download = "li-pulse-activity.csv"; link.click(); URL.revokeObjectURL(link.href); });
-

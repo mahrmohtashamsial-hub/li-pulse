@@ -6,6 +6,12 @@
   <meta name="description" content="Classify LinkedIn prospects by recent activity without browser scraping.">
   <title>li-pulse — LinkedIn activity scoring</title>
   <link rel="stylesheet" href="/styles.css">
+  <script>
+    window.liPulseTurnstileToken = "";
+    window.onTurnstileSuccess = (token) => { window.liPulseTurnstileToken = token; };
+    window.onTurnstileExpired = () => { window.liPulseTurnstileToken = ""; };
+  </script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
   <header><div><strong>li-pulse</strong><span>Prospect activity intelligence</span></div><span class="safe">No scraping · BYOK</span></header>
@@ -28,6 +34,9 @@
         <label>DORMANT max days<input id="dormant" type="number" value="180" min="2"></label>
       </div>
       <p class="privacy">Your provider key is transmitted over HTTPS for this run and is never stored in our database or browser storage.</p>
+      <div class="turnstile-wrap">
+        <div class="cf-turnstile" data-sitekey="0x4AAAAAAEF6g0z_NurCOZQA" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-theme="light"></div>
+      </div>
       <button id="start" disabled>Analyze profiles</button>
       <div id="status" class="status"></div>
     </section>
@@ -40,4 +49,3 @@
   <script src="/app.js" type="module"></script>
 </body>
 </html>
-
