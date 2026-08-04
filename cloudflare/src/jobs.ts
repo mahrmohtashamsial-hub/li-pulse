@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { actorRegistry, profileSlug, selectedActors, type ActorDefinition, type ActorKey, type NormalizedActorRow } from "./actors/registry";
+import { actorRegistry, configuredActors, profileSlug, type ActorDefinition, type ActorKey, type ActorSelection, type NormalizedActorRow } from "./actors/registry";
 
 export interface JobEnv {
   DB: D1Database;
@@ -17,7 +17,7 @@ type JobStatus = "QUEUED" | "RUNNING" | "COMPLETE" | "FAILED" | "STALE";
 type ActorStatus = "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED" | "TIMED_OUT";
 export type StoredConfig = {
   rows: Array<Record<string, string> & { linkedin_url: string }>;
-  actors: ActorKey[];
+  actors: ActorSelection[];
   thresholds: { active: number; occasional: number; dormant: number };
   limits: Partial<Record<ActorKey, number>>;
   actorIds?: Partial<Record<ActorKey, string>>;
@@ -29,7 +29,11 @@ const rowSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolea
 );
 export const createJobSchema = z.object({
   rows: z.array(rowSchema).min(1).max(100),
-  actors: z.array(z.enum(["posts", "comments", "reactions"])).min(1),
+  actors: z.array(z.object({
+    key: z.string().regex(/^[a-z0-9_-]{1,40}$/), adapter: z.enum(["posts", "comments", "reactions"]),
+    actor_id: z.string().min(1).max(500), label: z.string().min(1).max(80),
+    limit: z.number().int().positive().max(10000), cost_per_result_usd: z.number().nonnegative().max(100),
+  })).min(1).max(10),
   api_key: z.string().min(1).optional(),
   actor_ids: z.record(z.string(), z.string()).optional(),
   costs: z.record(z.string(), z.number().nonnegative()).optional(),
@@ -92,7 +96,7 @@ async function apifyFetch(url: string, token?: string, init?: RequestInit): Prom
 async function startActor(jobId: string, actor: ActorDefinition, config: StoredConfig, token: string, origin: string, env: JobEnv): Promise<void> {
   const secret = await readSecret(env.APIFY_WEBHOOK_SECRET);
   if (!secret) throw new Error("APIFY_WEBHOOK_SECRET is not configured");
-  const limit = config.limits[actor.key] ?? 100;
+  const limit = config.actors.find((item) => item.key === actor.key)?.maxItems ?? 100;
   const webhookUrl = `${origin}/api/webhooks/apify/${encodeURIComponent(jobId)}?token=${encodeURIComponent(secret)}`;
   const webhooks = [{
     eventTypes: ["ACTOR.RUN.SUCCEEDED", "ACTOR.RUN.FAILED", "ACTOR.RUN.TIMED_OUT", "ACTOR.RUN.ABORTED"],
@@ -119,7 +123,7 @@ export async function startJob(jobId: string, config: StoredConfig, suppliedToke
     return;
   }
   await env.DB.prepare("update jobs set status='RUNNING', updated_at=? where id=?").bind(new Date().toISOString(), jobId).run();
-  const actors = selectedActors(config.actors, { actorIds: config.actorIds });
+  const actors = configuredActors(config.actors);
   await Promise.allSettled(actors.map(async (actor) => {
     try { await startActor(jobId, actor, config, token, origin, env); }
     catch (error) {
@@ -158,34 +162,35 @@ export function classifyTier(days: number | null, thresholds: StoredConfig["thre
 export function webhookEventKey(jobId: string, runId: string, eventType: string): string { return `${jobId}:${runId}:${eventType}`; }
 export function isJobTimedOut(createdAt: string, maxMinutes: number, now = Date.now()): boolean { return now - new Date(createdAt).getTime() > maxMinutes * 60_000; }
 
-export function mergeRows(config: StoredConfig, outputs: Partial<Record<ActorKey, ReturnType<ActorDefinition["normalizeOutput"]>>>, failedActors: ActorKey[], now = Date.now()): Array<Record<string, unknown>> {
+export function mergeRows(config: StoredConfig, outputs: Record<string, ReturnType<ActorDefinition["normalizeOutput"]> | undefined>, failedActors: string[], now = Date.now()): Array<Record<string, unknown>> {
   return config.rows.map((sourceRow) => {
-    const normalized = normalizeUrl(sourceRow.linkedin_url); const fragments: Array<[ActorKey, NormalizedActorRow]> = [];
-    for (const key of config.actors) { const row = outputs[key]?.rows.get(normalized.slug); if (row) fragments.push([key, row]); }
-    const complete = fragments.map(([key]) => key);
+    const normalized = normalizeUrl(sourceRow.linkedin_url); const fragments: Array<[ActorSelection, NormalizedActorRow]> = [];
+    for (const actor of config.actors) { const row = outputs[actor.key]?.rows.get(normalized.slug); if (row) fragments.push([actor, row]); }
+    const complete = fragments.map(([actor]) => actor.key);
+    const completeAdapters = new Set(fragments.map(([actor]) => actor.adapter));
     const timestamps = { posts: [] as string[], reposts: [] as string[], comments: [] as string[], reactions: [] as string[] };
     for (const [, fragment] of fragments) for (const key of Object.keys(timestamps) as Array<keyof typeof timestamps>) timestamps[key].push(...(fragment.timestamps[key] ?? []));
     const allDates = Object.values(timestamps).flat().map((value) => new Date(value)).filter((date) => !Number.isNaN(date.getTime()));
     const newest = allDates.length ? new Date(Math.max(...allDates.map((date) => date.getTime()))) : null;
     const days = newest ? Math.max(0, Math.floor((now - newest.getTime()) / 86_400_000)) : null;
-    const fullActivityCoverage = config.actors.every((key) => complete.includes(key));
+    const fullActivityCoverage = config.actors.every((actor) => complete.includes(actor.key));
     const tier = classifyTier(days, config.thresholds, fullActivityCoverage);
     const notes: string[] = [];
     if (failedActors.length) notes.push(`Failed actors: ${failedActors.join(", ")}`);
-    const missing = config.actors.filter((key) => !complete.includes(key)); if (missing.length) notes.push(`No row returned by: ${missing.join(", ")}; missing activity is not counted as zero`);
+    const missing = config.actors.filter((actor) => !complete.includes(actor.key)).map((actor) => actor.label); if (missing.length) notes.push(`No row returned by: ${missing.join(", ")}; missing activity is not counted as zero`);
     notes.push("Profile identity fields unavailable: no profile-details actor sample configured");
     return {
       ...sourceRow, linkedin_url: normalized.url,
       name: null, headline: null, company: null, title: null, follower_count: null,
-      posts_90d: complete.includes("posts") ? countWithin(timestamps.posts, 90, now) : null,
-      reposts_90d: complete.includes("posts") ? countWithin(timestamps.reposts, 90, now) : null,
-      comments_90d: complete.includes("comments") ? countWithin(timestamps.comments, 90, now) : null,
-      reactions_90d: complete.includes("reactions") ? countWithin(timestamps.reactions, 90, now) : null,
-      total_activity_90d: Object.entries(timestamps).filter(([key]) => (key === "posts" || key === "reposts") ? complete.includes("posts") : complete.includes(key as ActorKey)).reduce((sum, [, values]) => sum + countWithin(values, 90, now), 0),
+      posts_90d: completeAdapters.has("posts") ? countWithin(timestamps.posts, 90, now) : null,
+      reposts_90d: completeAdapters.has("posts") ? countWithin(timestamps.reposts, 90, now) : null,
+      comments_90d: completeAdapters.has("comments") ? countWithin(timestamps.comments, 90, now) : null,
+      reactions_90d: completeAdapters.has("reactions") ? countWithin(timestamps.reactions, 90, now) : null,
+      total_activity_90d: Object.entries(timestamps).filter(([key]) => (key === "posts" || key === "reposts") ? completeAdapters.has("posts") : completeAdapters.has(key as ActorKey)).reduce((sum, [, values]) => sum + countWithin(values, 90, now), 0),
       last_activity_date: newest?.toISOString().slice(0, 10) ?? null,
       days_since_last_activity: days,
       activity_tier: tier,
-      data_completeness: complete.length ? complete.join("+") : "none",
+      data_completeness: complete.length ? config.actors.filter((actor) => complete.includes(actor.key)).map((actor) => actor.label).join("+") : "none",
       notes: notes.join(". "),
     };
   });
@@ -195,11 +200,12 @@ async function mergeJob(jobId: string, env: JobEnv): Promise<void> {
   const job = await env.DB.prepare("select config_json from jobs where id=?").bind(jobId).first<{ config_json: string }>();
   if (!job) return;
   const config = JSON.parse(job.config_json) as StoredConfig;
-  const actors = await env.DB.prepare("select actor_key,status,output_json,error from job_actors where job_id=?").bind(jobId).all<{ actor_key: ActorKey; status: ActorStatus; output_json: string | null; error: string | null }>();
-  const outputs: Partial<Record<ActorKey, ReturnType<ActorDefinition["normalizeOutput"]>>> = {};
-  const failed: ActorKey[] = [];
+  const actors = await env.DB.prepare("select actor_key,status,output_json,error from job_actors where job_id=?").bind(jobId).all<{ actor_key: string; status: ActorStatus; output_json: string | null; error: string | null }>();
+  const outputs: Record<string, ReturnType<ActorDefinition["normalizeOutput"]> | undefined> = {};
+  const failed: string[] = [];
   for (const actor of actors.results) {
-    if (actor.status === "SUCCEEDED" && actor.output_json) outputs[actor.actor_key] = actorRegistry[actor.actor_key].normalizeOutput(JSON.parse(actor.output_json) as unknown[]);
+    const selection = config.actors.find((item) => item.key === actor.actor_key);
+    if (actor.status === "SUCCEEDED" && actor.output_json && selection) outputs[actor.actor_key] = actorRegistry[selection.adapter].normalizeOutput(JSON.parse(actor.output_json) as unknown[]);
     else if (["FAILED", "TIMED_OUT"].includes(actor.status)) failed.push(actor.actor_key);
   }
   const merged = mergeRows(config, outputs, failed);
@@ -227,14 +233,17 @@ async function receiveWebhook(request: Request, jobId: string, env: JobEnv): Pro
   const inserted = await env.DB.prepare("insert or ignore into job_webhook_events(job_id,apify_run_id,event_type,received_at) values (?,?,?,?)")
     .bind(jobId, resource.id, eventType, new Date().toISOString()).run();
   if (!inserted.meta.changes) return json({ ok: true, duplicate: true });
-  const actor = await env.DB.prepare("select actor_key from job_actors where job_id=? and apify_run_id=?").bind(jobId, resource.id).first<{ actor_key: ActorKey }>();
+  const actor = await env.DB.prepare("select actor_key from job_actors where job_id=? and apify_run_id=?").bind(jobId, resource.id).first<{ actor_key: string }>();
   if (!actor) return json({ error: "Run is not registered for this job" }, 404);
   if (eventType === "ACTOR.RUN.SUCCEEDED") {
     const datasetId = resource.defaultDatasetId || (await env.DB.prepare("select dataset_id from job_actors where job_id=? and actor_key=?").bind(jobId, actor.actor_key).first<{ dataset_id: string }>())?.dataset_id;
     try {
       if (!datasetId) throw new Error("Webhook did not contain a dataset ID");
       const items = await fetchDataset(datasetId, env);
-      const normalized = actorRegistry[actor.actor_key].normalizeOutput(items);
+      const job = await env.DB.prepare("select config_json from jobs where id=?").bind(jobId).first<{ config_json: string }>();
+      const selection = job ? (JSON.parse(job.config_json) as StoredConfig).actors.find((item) => item.key === actor.actor_key) : undefined;
+      if (!selection) throw new Error("Actor configuration is missing");
+      const normalized = actorRegistry[selection.adapter].normalizeOutput(items);
       await env.DB.prepare("update job_actors set status='SUCCEEDED',dataset_id=?,item_count=?,output_json=?,finished_at=?,error=? where job_id=? and actor_key=?")
         .bind(datasetId, items.length, JSON.stringify(items), new Date().toISOString(), normalized.issues.length ? normalized.issues.join("; ").slice(0, 2000) : null, jobId, actor.actor_key).run();
     } catch (error) {
@@ -283,17 +292,19 @@ export async function createJob(request: Request, env: JobEnv, context: Executio
     catch (error) { skipped.push({ row_number: index + 2, linkedin_url: row.linkedin_url, reason: error instanceof Error ? error.message : String(error) }); }
   });
   if (!rows.length) return json({ error: "No valid profile URLs", skipped }, 400);
+  if (new Set(parsed.data.actors.map((actor) => actor.key)).size !== parsed.data.actors.length) return json({ error: "Every actor row needs a unique key" }, 400);
   const jobId = crypto.randomUUID(); const now = new Date().toISOString();
   const config: StoredConfig = {
-    rows, actors: [...new Set(parsed.data.actors)], thresholds: { active: parsed.data.active, occasional: parsed.data.occasional, dormant: parsed.data.dormant },
+    rows, actors: parsed.data.actors.map((actor) => ({ key: actor.key, adapter: actor.adapter, actorId: actor.actor_id, label: actor.label, maxItems: actor.limit, costPerResultUsd: actor.cost_per_result_usd })), thresholds: { active: parsed.data.active, occasional: parsed.data.occasional, dormant: parsed.data.dormant },
     limits: (parsed.data.limits ?? {}) as Partial<Record<ActorKey, number>>, actorIds: parsed.data.actor_ids as Partial<Record<ActorKey, string>> | undefined,
     costs: parsed.data.costs as Partial<Record<ActorKey, number>> | undefined,
   };
+  try { configuredActors(config.actors); } catch (error) { return json({ error: error instanceof Error ? error.message : String(error) }, 400); }
   await env.DB.prepare("insert into jobs(id,status,created_at,updated_at,config_json,url_count,error) values (?,'QUEUED',?,?,?,?,null)")
     .bind(jobId, now, now, JSON.stringify(config), rows.length).run();
-  await env.DB.batch(config.actors.map((key) => env.DB.prepare("insert into job_actors(job_id,actor_key,status) values (?,?,'QUEUED')").bind(jobId, key)));
+  await env.DB.batch(config.actors.map((actor) => env.DB.prepare("insert into job_actors(job_id,actor_key,status) values (?,?,'QUEUED')").bind(jobId, actor.key)));
   context.waitUntil(startJob(jobId, config, parsed.data.api_key, new URL(request.url).origin, env));
-  const estimate = config.actors.reduce((sum, key) => sum + rows.length * (config.limits[key] ?? 100) * (config.costs?.[key] ?? actorRegistry[key].costPerResultUsd), 0);
+  const estimate = config.actors.reduce((sum, actor) => sum + rows.length * actor.maxItems * actor.costPerResultUsd, 0);
   return json({ job_id: jobId, status: "QUEUED", valid_count: rows.length, skipped, estimated_max_cost_usd: Number(estimate.toFixed(4)) }, 202);
 }
 

@@ -17,7 +17,7 @@
   <nav class="nav">
     <a class="brand" href="#top" aria-label="li-pulse home"><span class="brand-mark">lp</span><span>li-pulse</span></a>
     <div class="nav-tags"><span class="tag tag-accent">BYOK</span><span class="tag">No scraping</span></div>
-    <a class="btn btn-primary nav-cta" href="#configure">Analyze profiles</a>
+    <div class="nav-tags"><a class="btn btn-primary nav-cta" href="#configure">Analyze profiles</a><a class="tag" href="/auth/logout">Sign out</a></div>
   </nav>
 
   <main id="top">
@@ -48,10 +48,14 @@
         <div class="step-heading"><span class="step-num">2</span><div><p class="step-label">Settings</p><h2>Configure analysis</h2></div></div>
         <div class="card">
           <fieldset class="actor-picker"><legend>Activity sources</legend>
-            <label class="actor-option"><input type="checkbox" name="actor" value="posts" checked><span><strong>Posts + reposts</strong><small>$5 / 1,000 results · up to 100 per profile</small></span><input id="postsLimit" aria-label="Posts limit per profile" type="number" value="100" min="1" max="100"></label>
-            <label class="actor-option"><input type="checkbox" name="actor" value="comments" checked><span><strong>Comments on others' posts</strong><small>$1.20 / 1,000 comments · up to 3,000 per profile</small></span><input id="commentsLimit" aria-label="Comments limit per profile" type="number" value="100" min="1" max="3000"></label>
-            <label class="actor-option"><input type="checkbox" name="actor" value="reactions" checked><span><strong>Reactions on others' posts</strong><small>$5 / 1,000 results · up to 100 per profile</small></span><input id="reactionsLimit" aria-label="Reactions limit per profile" type="number" value="100" min="1" max="100"></label>
+            <div id="actorRows">
+              <div class="actor-option"><input type="checkbox" name="actor" value="posts" checked><span><select class="actor-adapter" aria-label="Output adapter"><option value="posts" selected>Posts + reposts</option><option value="comments">Comments</option><option value="reactions">Reactions</option></select><small>Choose the adapter matching this Actor's output</small><input class="actor-id" aria-label="Actor URL or ID" value="https://apify.com/apimaestro/linkedin-batch-profile-posts-scraper"></span><label class="mini-label">Limit<input class="actor-limit" type="number" value="100" min="1" max="10000"></label><label class="mini-label">$/1,000<input class="actor-cost" type="number" value="5" min="0" step="0.01"></label></div>
+              <div class="actor-option"><input type="checkbox" name="actor" value="comments" checked><span><select class="actor-adapter" aria-label="Output adapter"><option value="posts">Posts + reposts</option><option value="comments" selected>Comments</option><option value="reactions">Reactions</option></select><small>Choose the adapter matching this Actor's output</small><input class="actor-id" aria-label="Actor URL or ID" value="https://apify.com/apimaestro/linkedin-profile-comments"></span><label class="mini-label">Limit<input class="actor-limit" type="number" value="100" min="1" max="10000"></label><label class="mini-label">$/1,000<input class="actor-cost" type="number" value="1.2" min="0" step="0.01"></label></div>
+              <div class="actor-option"><input type="checkbox" name="actor" value="reactions" checked><span><select class="actor-adapter" aria-label="Output adapter"><option value="posts">Posts + reposts</option><option value="comments">Comments</option><option value="reactions" selected>Reactions</option></select><small>Choose the adapter matching this Actor's output</small><input class="actor-id" aria-label="Actor URL or ID" value="https://apify.com/apimaestro/linkedin-profile-reactions"></span><label class="mini-label">Limit<input class="actor-limit" type="number" value="100" min="1" max="10000"></label><label class="mini-label">$/1,000<input class="actor-cost" type="number" value="5" min="0" step="0.01"></label></div>
+            </div>
           </fieldset>
+          <button id="addActor" class="btn btn-secondary" type="button">+ Add another Actor</button>
+          <p class="adapter-note">Select any one or combination. Paste an Actor Store URL, console URL, <code>owner/actor</code>, or <code>owner~actor</code>. A replacement must return the JSON shape expected by that adapter.</p>
           <div class="grid grid-main"><label>Apify API key <span>optional when server key is configured</span><input id="apiKey" type="password" autocomplete="off" placeholder="Used to launch this job only"></label><div id="costEstimate" class="cost-box">Upload a CSV to estimate maximum cost.</div></div>
           <div class="grid grid-thresholds">
             <label>Cache max age <span>days</span><input id="maxAge" type="number" value="14" min="0" max="365"></label>

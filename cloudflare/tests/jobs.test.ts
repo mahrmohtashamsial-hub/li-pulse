@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { classifyTier, isJobTimedOut, mergeRows, webhookEventKey, type StoredConfig } from "../src/jobs";
+import { classifyTier, createJobSchema, isJobTimedOut, mergeRows, webhookEventKey, type StoredConfig } from "../src/jobs";
 import type { NormalizationResult } from "../src/actors/registry";
 
 const base: StoredConfig = {
   rows: [{ linkedin_url: "https://www.linkedin.com/in/example", lead_id: "42" }],
-  actors: ["posts", "comments", "reactions"],
+  actors: [
+    { key: "posts", adapter: "posts", actorId: "apimaestro~linkedin-batch-profile-posts-scraper", label: "Posts", maxItems: 100, costPerResultUsd: 0.005 },
+    { key: "comments", adapter: "comments", actorId: "apimaestro~linkedin-profile-comments", label: "Comments", maxItems: 100, costPerResultUsd: 0.0012 },
+    { key: "reactions", adapter: "reactions", actorId: "apimaestro~linkedin-profile-reactions", label: "Reactions", maxItems: 100, costPerResultUsd: 0.005 },
+  ],
   thresholds: { active: 14, occasional: 60, dormant: 180 }, limits: {},
 };
 function output(key: "posts" | "comments" | "reactions", date: string): NormalizationResult {
@@ -28,7 +32,7 @@ describe("job merge and reliability boundaries", () => {
     expect(rows[0].posts_90d).toBe(1);
     expect(rows[0].comments_90d).toBeNull();
     expect(rows[0].reactions_90d).toBeNull();
-    expect(rows[0].data_completeness).toBe("posts");
+    expect(rows[0].data_completeness).toBe("Posts");
     expect(rows[0].notes).toContain("missing activity is not counted as zero");
     expect(rows[0].lead_id).toBe("42");
   });
@@ -40,5 +44,12 @@ describe("job merge and reliability boundaries", () => {
     const now = Date.parse("2026-08-04T00:31:00Z");
     expect(isJobTimedOut("2026-08-04T00:00:00Z", 30, now)).toBe(true);
     expect(isJobTimedOut("2026-08-04T00:01:00Z", 30, now)).toBe(false);
+  });
+  it("accepts one to ten independently configured actor instances", () => {
+    const parsed = createJobSchema.safeParse({
+      rows: [{ linkedin_url: "https://www.linkedin.com/in/example" }],
+      actors: Array.from({ length: 4 }, (_, index) => ({ key: `actor-${index}`, adapter: index % 2 ? "comments" : "posts", actor_id: `owner/actor-${index}`, label: `Actor ${index}`, limit: 100, cost_per_result_usd: 0.005 })),
+    });
+    expect(parsed.success).toBe(true);
   });
 });

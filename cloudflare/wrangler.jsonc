@@ -8,7 +8,7 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": true
   },
   "d1_databases": [
     {
@@ -19,6 +19,11 @@
     }
   ],
   "secrets_store_secrets": [
+    {
+      "binding": "APP_PASSWORD",
+      "store_id": "8cf6d4c81cf7408c8d30d2efa037ebdd",
+      "secret_name": "APP_PASSWORD"
+    },
     {
       "binding": "APIFY_TOKEN",
       "store_id": "8cf6d4c81cf7408c8d30d2efa037ebdd",

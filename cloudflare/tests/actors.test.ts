@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import posts from "./fixtures/posts.json";
 import comments from "./fixtures/comments.json";
 import reactions from "./fixtures/reactions.json";
-import { actorRegistry, profileSlug } from "../src/actors/registry";
+import { actorIdFromInput, actorRegistry, profileSlug, selectedActors } from "../src/actors/registry";
 
 describe("sample-derived actor adapters", () => {
   it("normalizes profile URL variants without guessing display names", () => {
@@ -30,5 +30,11 @@ describe("sample-derived actor adapters", () => {
     expect(actorRegistry.posts.costPerResultUsd).toBe(0.005);
     expect(actorRegistry.comments.costPerResultUsd).toBe(0.0012);
     expect(actorRegistry.reactions.costPerResultUsd).toBe(0.005);
+  });
+  it("accepts editable Actor Store URLs and IDs without guessing adapters", () => {
+    expect(actorIdFromInput("https://apify.com/apimaestro/linkedin-profile-comments")).toBe("apimaestro~linkedin-profile-comments");
+    expect(actorIdFromInput("apimaestro/linkedin-profile-comments")).toBe("apimaestro~linkedin-profile-comments");
+    expect(selectedActors(["comments"], { actorIds: { comments: "https://apify.com/acme/custom-comments" } })[0].actorId).toBe("acme~custom-comments");
+    expect(actorIdFromInput("https://example.com/not-apify")).toBeNull();
   });
 });

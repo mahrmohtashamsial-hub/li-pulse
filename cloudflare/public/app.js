@@ -1,6 +1,5 @@
 const $ = (id) => document.getElementById(id);
 let rows = [], results = [], activeJobId = null, pollTimer = null;
-const actorPrices = { posts: 0.005, comments: 0.0012, reactions: 0.005 };
 const actorLabels = { posts: "Posts + reposts", comments: "Comments", reactions: "Reactions" };
 
 function parseCsv(text) {
@@ -29,15 +28,21 @@ function normalizeUrl(value) {
   } catch { return null; }
 }
 
-function selectedActorKeys() { return [...document.querySelectorAll('input[name="actor"]:checked')].map((input) => input.value); }
-function limits() { return { posts: +$("postsLimit").value, comments: +$("commentsLimit").value, reactions: +$("reactionsLimit").value }; }
+function selectedActors() {
+  return [...document.querySelectorAll(".actor-option")].flatMap((row) => {
+    const enabled = row.querySelector('input[name="actor"]');
+    if (!enabled?.checked) return [];
+    const adapter = row.querySelector(".actor-adapter").value;
+    const names = { posts: "Posts + reposts", comments: "Comments", reactions: "Reactions" };
+    return [{ key: enabled.value, adapter, actor_id: row.querySelector(".actor-id").value.trim(), label: `${names[adapter]} (${enabled.value})`, limit: +row.querySelector(".actor-limit").value, cost_per_result_usd: +row.querySelector(".actor-cost").value / 1000 }];
+  });
+}
 function estimateCost() {
   const validCount = new Set(rows.map((row) => normalizeUrl(row.linkedin_url)).filter(Boolean)).size;
-  const actorLimits = limits();
-  return selectedActorKeys().reduce((sum, key) => sum + validCount * actorLimits[key] * actorPrices[key], 0);
+  return selectedActors().reduce((sum, actor) => sum + validCount * actor.limit * actor.cost_per_result_usd, 0);
 }
 function updateEstimate() {
-  const estimate = estimateCost(); const actors = selectedActorKeys();
+  const estimate = estimateCost(); const actors = selectedActors();
   $("costEstimate").textContent = rows.length && actors.length ? `Maximum estimate: $${estimate.toFixed(2)} · actual cost depends on returned results` : "Upload a CSV and select at least one actor.";
   $("start").disabled = !rows.length || !actors.length || !!activeJobId;
 }
@@ -59,7 +64,14 @@ $("file").addEventListener("change", async (event) => {
   }
   table(rows.slice(0, 5), $("preview")); updateEstimate();
 });
-document.querySelectorAll('input[name="actor"], .actor-option input[type="number"]').forEach((input) => input.addEventListener("change", updateEstimate));
+$("actorRows").addEventListener("change", updateEstimate);
+let nextActor = 4;
+$("addActor").addEventListener("click", () => {
+  if (document.querySelectorAll(".actor-option").length >= 10) return;
+  const row = document.createElement("div"); row.className = "actor-option";
+  row.innerHTML = `<input type="checkbox" name="actor" value="actor-${nextActor++}" checked><span><select class="actor-adapter" aria-label="Output adapter"><option value="posts">Posts + reposts</option><option value="comments">Comments</option><option value="reactions">Reactions</option></select><small>Choose the adapter matching this Actor's output</small><input class="actor-id" aria-label="Actor URL or ID" placeholder="https://apify.com/owner/actor"></span><label class="mini-label">Limit<input class="actor-limit" type="number" value="100" min="1" max="10000"></label><label class="mini-label">$/1,000<input class="actor-cost" type="number" value="5" min="0" step="0.01"></label>`;
+  $("actorRows").append(row); updateEstimate();
+});
 
 function renderResults() {
   const tier = $("tierFilter").value;
@@ -97,12 +109,12 @@ async function pollJob(jobId) {
 
 $("start").addEventListener("click", async () => {
   if (!window.liPulseTurnstileToken) { $("status").textContent = "Please complete the security check before starting."; return; }
-  const actors = selectedActorKeys(); const maximum = estimateCost();
+  const actors = selectedActors(); const maximum = estimateCost();
   if (!confirm(`Start ${actors.length} actor run${actors.length === 1 ? "" : "s"}?\n\nMaximum estimated cost: $${maximum.toFixed(2)}\nActual cost depends on returned results.`)) return;
   $("start").disabled = true; $("status").textContent = "Creating job…";
   try {
     const response = await fetch("/api/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
-      rows, actors, api_key: $("apiKey").value || undefined, limits: limits(),
+      rows, actors, api_key: $("apiKey").value || undefined,
       active: +$("active").value, occasional: +$("occasional").value, dormant: +$("dormant").value,
       turnstile_token: window.liPulseTurnstileToken,
     }) });

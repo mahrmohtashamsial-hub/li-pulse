@@ -1,4 +1,5 @@
 import { handleJobRequest, pollStaleJobs } from "./jobs";
+import { clearSessionCookie, handleLogin, isAuthenticated, loginPage, type SecretBinding } from "./auth";
 
 interface Env {
   DB: D1Database;
@@ -7,6 +8,7 @@ interface Env {
   TURNSTILE_SECRET?: string | { get(): Promise<string> };
   APIFY_TOKEN?: string | { get(): Promise<string> };
   APIFY_WEBHOOK_SECRET?: string | { get(): Promise<string> };
+  APP_PASSWORD?: SecretBinding;
   JOB_MAX_DURATION_MINUTES?: string;
 }
 
@@ -197,6 +199,17 @@ export default {
   async fetch(request: Request, env: Env, context: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/api/health") return json({ status: "ok", service: "li-pulse" });
+    if (url.pathname.startsWith("/api/webhooks/apify/")) {
+      const webhookResponse = await handleJobRequest(request, env, context, (token) => verifyTurnstile(request, env, token));
+      return webhookResponse ?? json({ error: "Not found" }, 404);
+    }
+    if (url.pathname === "/auth/login") return handleLogin(request, env, (token) => verifyTurnstile(request, env, token));
+    if (url.pathname === "/auth/logout") return new Response(null, { status: 303, headers: { location: "/auth/login", "set-cookie": clearSessionCookie(), "cache-control": "no-store" } });
+    if (!env.APP_PASSWORD) return json({ error: "Authentication is not configured. Add the APP_PASSWORD secret binding." }, 503);
+    if (!await isAuthenticated(request, env)) {
+      if (url.pathname.startsWith("/api/")) return json({ error: "Authentication required" }, 401);
+      return loginPage(false);
+    }
     const jobResponse = await handleJobRequest(request, env, context, (token) => verifyTurnstile(request, env, token));
     if (jobResponse) return jobResponse;
     if (url.pathname === "/api/run" && request.method === "POST") return run(request, env);
