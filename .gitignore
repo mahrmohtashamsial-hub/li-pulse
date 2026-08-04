@@ -14,3 +14,4 @@ cloudflare/node_modules/
 cloudflare/.wrangler/
 .wrangler/
 cloudflare/.wrangler-config/
+cloudflare/*.log
