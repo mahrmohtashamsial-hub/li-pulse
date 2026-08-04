@@ -4,6 +4,7 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-31",
   "workers_dev": true,
+  "triggers": { "crons": ["*/2 * * * *"] },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
@@ -18,7 +19,7 @@
     }
   ],
   "vars": {
-    "MAX_PROFILES_PER_RUN": "100"
+    "MAX_PROFILES_PER_RUN": "100",
+    "JOB_MAX_DURATION_MINUTES": "30"
   }
 }
-

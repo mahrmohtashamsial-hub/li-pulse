@@ -1,8 +1,13 @@
+import { handleJobRequest, pollStaleJobs } from "./jobs";
+
 interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   MAX_PROFILES_PER_RUN: string;
   TURNSTILE_SECRET?: string | { get(): Promise<string> };
+  APIFY_TOKEN?: string | { get(): Promise<string> };
+  APIFY_WEBHOOK_SECRET?: string | { get(): Promise<string> };
+  JOB_MAX_DURATION_MINUTES?: string;
 }
 
 type ProviderName = "apify" | "brightdata" | "proxycurl" | "mock";
@@ -189,11 +194,16 @@ async function run(request: Request, env: Env): Promise<Response> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, context: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/api/health") return json({ status: "ok", service: "li-pulse" });
+    const jobResponse = await handleJobRequest(request, env, context, (token) => verifyTurnstile(request, env, token));
+    if (jobResponse) return jobResponse;
     if (url.pathname === "/api/run" && request.method === "POST") return run(request, env);
     if (url.pathname.startsWith("/api/")) return json({ error: "Not found" }, 404);
     return env.ASSETS.fetch(request);
+  },
+  async scheduled(_controller: ScheduledController, env: Env, context: ExecutionContext): Promise<void> {
+    context.waitUntil(pollStaleJobs(env));
   },
 } satisfies ExportedHandler<Env>;

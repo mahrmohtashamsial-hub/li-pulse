@@ -47,10 +47,12 @@
       <div class="wrap content-width">
         <div class="step-heading"><span class="step-num">2</span><div><p class="step-label">Settings</p><h2>Configure analysis</h2></div></div>
         <div class="card">
-          <div class="grid grid-main">
-            <label>Provider<select id="provider"><option value="mock">Mock demo</option><option value="apify">Apify</option><option value="brightdata">Bright Data</option><option value="proxycurl">Proxycurl</option></select></label>
-            <label>Provider API key<input id="apiKey" type="password" autocomplete="off" placeholder="Used for this run only"></label>
-          </div>
+          <fieldset class="actor-picker"><legend>Activity sources</legend>
+            <label class="actor-option"><input type="checkbox" name="actor" value="posts" checked><span><strong>Posts + reposts</strong><small>$5 / 1,000 results · up to 100 per profile</small></span><input id="postsLimit" aria-label="Posts limit per profile" type="number" value="100" min="1" max="100"></label>
+            <label class="actor-option"><input type="checkbox" name="actor" value="comments" checked><span><strong>Comments on others' posts</strong><small>$1.20 / 1,000 comments · up to 3,000 per profile</small></span><input id="commentsLimit" aria-label="Comments limit per profile" type="number" value="100" min="1" max="3000"></label>
+            <label class="actor-option"><input type="checkbox" name="actor" value="reactions" checked><span><strong>Reactions on others' posts</strong><small>$5 / 1,000 results · up to 100 per profile</small></span><input id="reactionsLimit" aria-label="Reactions limit per profile" type="number" value="100" min="1" max="100"></label>
+          </fieldset>
+          <div class="grid grid-main"><label>Apify API key <span>optional when server key is configured</span><input id="apiKey" type="password" autocomplete="off" placeholder="Used to launch this job only"></label><div id="costEstimate" class="cost-box">Upload a CSV to estimate maximum cost.</div></div>
           <div class="grid grid-thresholds">
             <label>Cache max age <span>days</span><input id="maxAge" type="number" value="14" min="0" max="365"></label>
             <label>ACTIVE max <span>days</span><input id="active" type="number" value="14" min="0"></label>
@@ -61,6 +63,7 @@
           <div class="turnstile-wrap"><div class="cf-turnstile" data-sitekey="0x4AAAAAAEF6g0z_NurCOZQA" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-theme="dark"></div></div>
           <button id="start" class="btn btn-primary btn-block" disabled>Analyze profiles <span aria-hidden="true">→</span></button>
           <div id="status" class="status" role="status"></div>
+          <div id="jobProgress" class="job-progress hidden"><div class="progress-head"><span id="jobLabel"></span><span id="progressLabel">0%</span></div><div class="progress-track"><span id="progressBar"></span></div><div id="actorStatuses" class="actor-statuses"></div></div>
         </div>
       </div>
     </section>

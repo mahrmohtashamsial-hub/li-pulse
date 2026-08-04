@@ -1,0 +1,3 @@
+APIFY_TOKEN=apify_api_your_token_here
+APIFY_WEBHOOK_SECRET=replace-with-a-long-random-value
+# TURNSTILE_SECRET=use-a-Turnstile-test-secret-for-local-development

@@ -1,5 +1,6 @@
 {
   "name": "li-pulse-cloudflare",
+  "type": "module",
   "private": true,
   "version": "0.1.0",
   "scripts": {
@@ -7,11 +8,18 @@
     "deploy": "wrangler deploy",
     "db:local": "wrangler d1 migrations apply li-pulse --local",
     "db:remote": "wrangler d1 migrations apply li-pulse --remote",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run --config vitest.node.config.ts --configLoader native"
+  },
+  "dependencies": {
+    "zod": "4.1.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260801.1",
     "typescript": "5.9.2",
+    "@cloudflare/vitest-pool-workers": "0.20.1",
+    "vitest": "4.1.10",
     "wrangler": "4.118.0"
   }
 }

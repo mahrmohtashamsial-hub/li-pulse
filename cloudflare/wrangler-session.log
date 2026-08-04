@@ -1,0 +1,46 @@
+
+--- 2026-08-04T10:23:48.862Z debug
+🪵  Writing logs to "C:\Users\Admin\Documents\Codex\2026-08-02\build-a-python-cli-tool-called\cloudflare\wrangler-session.log"
+---
+
+--- 2026-08-04T10:23:48.862Z debug
+.env file not found at "C:\Users\Admin\Documents\Codex\2026-08-02\build-a-python-cli-tool-called\.env". Continuing... For more details, refer to https://developers.cloudflare.com/workers/wrangler/system-environment-variables/
+---
+
+--- 2026-08-04T10:23:48.865Z debug
+.env file not found at "C:\Users\Admin\Documents\Codex\2026-08-02\build-a-python-cli-tool-called\.env.local". Continuing... For more details, refer to https://developers.cloudflare.com/workers/wrangler/system-environment-variables/
+---
+
+--- 2026-08-04T10:23:48.878Z log
+
+ ⛅️ wrangler 4.118.0
+────────────────────
+---
+
+--- 2026-08-04T10:23:48.949Z log
+Getting User settings...
+---
+
+--- 2026-08-04T10:23:48.952Z log
+You are not authenticated. Please run `wrangler login`.
+---
+
+--- 2026-08-04T10:23:48.952Z log
+To deploy without logging in, run a command like `wrangler deploy --temporary` to use a temporary preview account.
+---
+
+--- 2026-08-04T10:23:49.877Z debug
+Metrics dispatcher: Posting data {"deviceId":"f5db086b-e720-4eba-8568-b7e4b4ccf4d2","event":"wrangler command started","timestamp":1785839029877,"properties":{"amplitude_session_id":1785839028893,"amplitude_event_id":0,"wranglerVersion":"4.118.0","wranglerMajorVersion":4,"wranglerMinorVersion":118,"wranglerPatchVersion":0,"osPlatform":"Windows","osVersion":"Windows 10 Pro","nodeVersion":24,"isFirstUsage":false,"configFileType":"none","isCI":false,"isPagesCI":false,"isWorkersCI":false,"isInteractive":false,"hasAssets":false,"agent":"codex","argsUsed":[],"argsCombination":"","sanitizedCommand":"whoami","sanitizedArgs":{},"currentAgentSkillsInstalled":false}}
+---
+
+--- 2026-08-04T10:23:49.885Z debug
+Metrics dispatcher: Posting data {"deviceId":"f5db086b-e720-4eba-8568-b7e4b4ccf4d2","event":"view accounts","timestamp":1785839029885,"properties":{"amplitude_session_id":1785839028952,"amplitude_event_id":0,"wranglerVersion":"4.118.0","wranglerMajorVersion":4,"wranglerMinorVersion":118,"wranglerPatchVersion":0,"osPlatform":"Windows","osVersion":"Windows 10 Pro","nodeVersion":24,"isFirstUsage":false,"configFileType":"none","isCI":false,"isPagesCI":false,"isWorkersCI":false,"isInteractive":false,"hasAssets":false,"agent":"codex","category":"Workers","os":"win32:x64","currentAgentSkillsInstalled":false}}
+---
+
+--- 2026-08-04T10:23:49.888Z debug
+Metrics dispatcher: Posting data {"deviceId":"f5db086b-e720-4eba-8568-b7e4b4ccf4d2","event":"wrangler command completed","timestamp":1785839029888,"properties":{"amplitude_session_id":1785839028893,"amplitude_event_id":1,"wranglerVersion":"4.118.0","wranglerMajorVersion":4,"wranglerMinorVersion":118,"wranglerPatchVersion":0,"osPlatform":"Windows","osVersion":"Windows 10 Pro","nodeVersion":24,"isFirstUsage":false,"configFileType":"none","isCI":false,"isPagesCI":false,"isWorkersCI":false,"isInteractive":false,"hasAssets":false,"agent":"codex","argsUsed":[],"argsCombination":"","sanitizedCommand":"whoami","sanitizedArgs":{},"durationMs":85,"currentAgentSkillsInstalled":false}}
+---
+
+--- 2026-08-04T10:23:49.892Z debug
+Metrics dispatcher: Posting data {"deviceId":"f5db086b-e720-4eba-8568-b7e4b4ccf4d2","event":"skills_install_skipped","timestamp":1785839029892,"properties":{"amplitude_session_id":1785839028960,"amplitude_event_id":0,"wranglerVersion":"4.118.0","wranglerMajorVersion":4,"wranglerMinorVersion":118,"wranglerPatchVersion":0,"osPlatform":"Windows","osVersion":"Windows 10 Pro","nodeVersion":24,"isFirstUsage":false,"configFileType":"none","isCI":false,"isPagesCI":false,"isWorkersCI":false,"isInteractive":false,"hasAssets":false,"agent":"codex","category":"Workers","os":"win32:x64","reason":"Non-interactive terminal","command":"whoami","currentAgentSkillsInstalled":false}}
+---
