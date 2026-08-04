@@ -2,7 +2,7 @@ interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   MAX_PROFILES_PER_RUN: string;
-  TURNSTILE_SECRET?: string;
+  TURNSTILE_SECRET?: string | { get(): Promise<string> };
 }
 
 type ProviderName = "apify" | "brightdata" | "proxycurl" | "mock";
@@ -126,8 +126,12 @@ async function providerRequest(provider: ProviderName, linkedinUrl: string, apiK
 async function verifyTurnstile(request: Request, env: Env, token: unknown): Promise<boolean> {
   if (!env.TURNSTILE_SECRET) return true;
   if (typeof token !== "string" || !token) return false;
+  const secret = typeof env.TURNSTILE_SECRET === "string"
+    ? env.TURNSTILE_SECRET
+    : await env.TURNSTILE_SECRET.get();
+  if (!secret) return false;
   const form = new FormData();
-  form.set("secret", env.TURNSTILE_SECRET);
+  form.set("secret", secret);
   form.set("response", token);
   form.set("remoteip", request.headers.get("CF-Connecting-IP") || "");
   const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: form });
