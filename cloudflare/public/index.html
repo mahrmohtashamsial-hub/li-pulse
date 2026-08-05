@@ -81,6 +81,34 @@
         </div>
       </div>
     </section>
+
+    <section id="emailVerification" class="section">
+      <div class="wrap content-width">
+        <div class="step-heading"><span class="step-num">4</span><div><p class="step-label">Email verification</p><h2>Verify prospect emails</h2></div></div>
+        <div class="card">
+          <div class="grid grid-main">
+            <label>Email column<select id="emailColumn"><option value="">Upload a CSV first</option></select></label>
+            <label>Verification provider<select id="emailProvider"><option value="millionverifier">MillionVerifier · ~$0.001/email</option><option value="debounce">DeBounce · ~$0.0008/email</option><option value="neverbounce">NeverBounce · ~$0.001/email</option><option value="zerobounce">ZeroBounce · ~$0.006–0.009/email</option></select></label>
+            <label>Provider API key <span>used for this run only</span><input id="emailApiKey" type="password" autocomplete="off" placeholder="Never stored"></label>
+            <label>Cache max age <span>days</span><input id="emailMaxAge" type="number" value="14" min="0" max="30"></label>
+          </div>
+          <label class="source-toggle"><input id="useActivityResults" type="checkbox"><span>Use the latest LinkedIn activity results instead of the uploaded rows</span></label>
+          <div id="emailCost" class="cost-box">Upload a CSV containing emails to estimate cost.</div>
+          <button id="verifyEmails" class="btn btn-primary btn-block" disabled>Verify emails <span aria-hidden="true">→</span></button>
+          <div id="emailProgress" class="status" role="status"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="emailResultsCard" class="section hidden">
+      <div class="wrap">
+        <div class="step-heading"><span class="step-num">5</span><div><p class="step-label">Email results</p><h2>Verification results</h2></div></div>
+        <div class="card results-card">
+          <div class="results-head"><div id="emailCounts" class="counts"></div><div class="results-actions"><label class="sr-only" for="emailFilter">Filter email status</label><select id="emailFilter"><option>ALL</option><option>VALID</option><option>INVALID</option><option>RISKY</option><option>UNKNOWN</option></select><button id="downloadEmails" class="btn btn-secondary">Download CSV ↓</button></div></div>
+          <div id="emailResults" class="table-wrap"></div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer><div class="wrap"><span class="brand footer-brand"><span class="brand-mark">lp</span><span>li-pulse</span></span><p>Third-party provider APIs only. No LinkedIn cookies or browser scraping.</p></div></footer>

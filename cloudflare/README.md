@@ -111,3 +111,18 @@ pnpm deploy
 With Git-connected Workers, apply the migration manually first, then push the code;
 Cloudflare will deploy from `main`. Confirm the Cron trigger appears under Worker
 triggers after deployment.
+
+## Email verification
+
+The authenticated web app includes a stateless BYOK email-verification workflow
+for NeverBounce, ZeroBounce, MillionVerifier, and DeBounce. The browser submits at
+most 40 emails per batch; the Worker accepts at most 50 and uses eight concurrent
+provider requests. Individual failures become `unknown`, while HTTP 429 and 5xx
+responses receive up to four attempts with exponential backoff and `Retry-After`
+support. Provider keys are never written to D1, Cache API, or browser storage.
+
+Normalized output is `valid`, `invalid`, `risky`, or `unknown`. Catch-all,
+disposable, and do-not-mail classifications are treated as risky. Edge-cache keys
+contain only provider and normalized email, with a configurable maximum age. The
+CSV export preserves every input column and appends `email_status` and
+`email_status_reason`.

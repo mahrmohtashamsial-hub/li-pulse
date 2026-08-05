@@ -1,5 +1,6 @@
 import { handleJobRequest, pollStaleJobs } from "./jobs";
 import { clearSessionCookie, handleLogin, isAuthenticated, loginPage, type SecretBinding } from "./auth";
+import { handleEmailVerification } from "./email";
 
 interface Env {
   DB: D1Database;
@@ -210,6 +211,7 @@ export default {
       if (url.pathname.startsWith("/api/")) return json({ error: "Authentication required" }, 401);
       return loginPage(false);
     }
+    if (url.pathname === "/api/email/verify" && request.method === "POST") return handleEmailVerification(request);
     const jobResponse = await handleJobRequest(request, env, context, (token) => verifyTurnstile(request, env, token));
     if (jobResponse) return jobResponse;
     if (url.pathname === "/api/run" && request.method === "POST") return run(request, env);

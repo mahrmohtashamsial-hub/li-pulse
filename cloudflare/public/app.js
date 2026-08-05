@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 let rows = [], results = [], activeJobId = null, pollTimer = null;
+let emailResults = [];
 const actorLabels = { posts: "Posts + reposts", comments: "Comments", reactions: "Reactions" };
 
 function parseCsv(text) {
@@ -42,9 +43,9 @@ function estimateCost() {
   return selectedActors().reduce((sum, actor) => sum + validCount * actor.limit * actor.cost_per_result_usd, 0);
 }
 function updateEstimate() {
-  const estimate = estimateCost(); const actors = selectedActors();
-  $("costEstimate").textContent = rows.length && actors.length ? `Maximum estimate: $${estimate.toFixed(2)} · actual cost depends on returned results` : "Upload a CSV and select at least one actor.";
-  $("start").disabled = !rows.length || !actors.length || !!activeJobId;
+  const estimate = estimateCost(); const actors = selectedActors(); const linkedinCount = rows.filter((row) => normalizeUrl(row.linkedin_url)).length;
+  $("costEstimate").textContent = linkedinCount && actors.length ? `Maximum estimate: $${estimate.toFixed(2)} · actual cost depends on returned results` : "Upload LinkedIn profile URLs and select at least one actor.";
+  $("start").disabled = !linkedinCount || !actors.length || !!activeJobId;
 }
 
 function escapeHtml(value) { const node = document.createElement("div"); node.textContent = String(value); return node.innerHTML; }
@@ -56,13 +57,13 @@ function table(data, container) {
 
 $("file").addEventListener("change", async (event) => {
   rows = parseCsv(await event.target.files[0].text());
-  const hasColumn = rows.length && Object.hasOwn(rows[0], "linkedin_url");
-  if (!hasColumn) { rows = []; $("validation").textContent = "The CSV must contain a linkedin_url column."; }
-  else {
+  const hasLinkedIn = rows.length && Object.hasOwn(rows[0], "linkedin_url");
+  if (!rows.length) { $("validation").textContent = "The CSV contains no data rows."; }
+  else if (hasLinkedIn) {
     const valid = rows.filter((row) => normalizeUrl(row.linkedin_url)); const invalid = rows.length - valid.length;
-    $("validation").textContent = `${valid.length} valid URLs · ${invalid} skipped${invalid ? " (malformed or non-profile URLs)" : ""}`;
-  }
-  table(rows.slice(0, 5), $("preview")); updateEstimate();
+    $("validation").textContent = `${valid.length} valid LinkedIn URLs · ${invalid} skipped${invalid ? " (malformed or non-profile URLs)" : ""}`;
+  } else $("validation").textContent = `${rows.length} rows loaded · no linkedin_url column (email verification is still available)`;
+  table(rows.slice(0, 5), $("preview")); updateEstimate(); refreshEmailColumns();
 });
 $("actorRows").addEventListener("change", updateEstimate);
 let nextActor = 4;
@@ -80,6 +81,7 @@ function renderResults() {
   const counts = results.reduce((map, item) => { map[item.activity_tier] = (map[item.activity_tier] || 0) + 1; return map; }, {});
   $("counts").textContent = ["ACTIVE", "OCCASIONAL", "DORMANT", "INACTIVE", "UNKNOWN"].map((tierName) => `${tierName}: ${counts[tierName] || 0}`).join(" · ");
   if (results.length) $("resultsCard").classList.remove("hidden");
+  refreshEmailColumns();
 }
 
 function elapsed(started, finished) {
@@ -131,3 +133,44 @@ $("download").addEventListener("click", () => { if (activeJobId || location.hash
 
 const resumed = location.hash.match(/^#job=(.+)$/);
 if (resumed) { activeJobId = decodeURIComponent(resumed[1]); $("start").disabled = true; pollJob(activeJobId); }
+
+const emailRates = { millionverifier: 0.001, debounce: 0.0008, neverbounce: 0.001, zerobounce: 0.009 };
+function emailSourceRows() { return $("useActivityResults").checked && results.length ? results : rows; }
+function refreshEmailColumns() {
+  const source = emailSourceRows(); const headers = source.length ? Object.keys(source[0]) : [];
+  const previous = $("emailColumn").value; $("emailColumn").innerHTML = headers.map((header) => `<option value="${escapeHtml(header)}">${escapeHtml(header)}</option>`).join("") || '<option value="">Upload a CSV first</option>';
+  $("emailColumn").value = headers.includes(previous) ? previous : (headers.find((header) => header.toLowerCase() === "email") || headers[0] || ""); updateEmailEstimate();
+}
+function updateEmailEstimate() {
+  const column = $("emailColumn").value; const count = emailSourceRows().filter((row) => String(row[column] || "").trim()).length; const provider = $("emailProvider").value;
+  const low = provider === "zerobounce" ? count * 0.006 : count * emailRates[provider]; const high = count * emailRates[provider];
+  $("emailCost").textContent = count ? `Estimated ${count} emails · ~$${low.toFixed(2)}${high !== low ? `–$${high.toFixed(2)}` : ""} · estimate only; provider rates change` : "Select a populated email column to estimate cost.";
+  $("verifyEmails").disabled = !count || !$("emailApiKey").value.trim();
+}
+function renderEmailResults() {
+  const filter = $("emailFilter").value.toLowerCase(); const shown = emailResults.filter((row) => filter === "all" || row.email_status === filter);
+  table(shown, $("emailResults")); const counts = emailResults.reduce((map, row) => { map[row.email_status] = (map[row.email_status] || 0) + 1; return map; }, {});
+  $("emailCounts").textContent = ["valid", "invalid", "risky", "unknown"].map((status) => `${status.toUpperCase()}: ${counts[status] || 0}`).join(" · ");
+  if (emailResults.length) $("emailResultsCard").classList.remove("hidden");
+}
+function csvText(data) {
+  if (!data.length) return ""; const headers = Object.keys(data[0]); const quote = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+  return [headers.map(quote).join(","), ...data.map((row) => headers.map((header) => quote(row[header])).join(","))].join("\r\n");
+}
+$("emailProvider").addEventListener("change", updateEmailEstimate); $("emailColumn").addEventListener("change", updateEmailEstimate); $("emailApiKey").addEventListener("input", updateEmailEstimate);
+$("useActivityResults").addEventListener("change", refreshEmailColumns); $("emailFilter").addEventListener("change", renderEmailResults);
+$("verifyEmails").addEventListener("click", async () => {
+  const source = emailSourceRows(), column = $("emailColumn").value, candidates = source.map((row, index) => ({ row, index, email: String(row[column] || "").trim() })).filter((item) => item.email);
+  const estimate = candidates.length * emailRates[$("emailProvider").value]; if (!confirm(`Verify ${candidates.length} emails?\n\nEstimated maximum cost: $${estimate.toFixed(2)}\nProvider pricing may change.`)) return;
+  $("verifyEmails").disabled = true; emailResults = source.map((row) => ({ ...row, email_status: "", email_status_reason: "" })); let completed = 0;
+  try {
+    for (let offset = 0; offset < candidates.length; offset += 40) {
+      const batch = candidates.slice(offset, offset + 40); const response = await fetch("/api/email/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ provider: $("emailProvider").value, api_key: $("emailApiKey").value, emails: batch.map((item) => item.email), max_age_days: +$("emailMaxAge").value }) });
+      const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "Email verification batch failed");
+      payload.results.forEach((verification, index) => { const target = emailResults[batch[index].index]; target.email_status = verification.status; target.email_status_reason = verification.reason; });
+      completed += batch.length; $("emailProgress").textContent = `${completed} / ${candidates.length} verified`; renderEmailResults();
+    }
+  } catch (error) { $("emailProgress").textContent = `${completed} / ${candidates.length} verified · ${error.message}`; }
+  finally { updateEmailEstimate(); }
+});
+$("downloadEmails").addEventListener("click", () => { const blob = new Blob([csvText(emailResults)], { type: "text/csv;charset=utf-8" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "li-pulse-email-verification.csv"; link.click(); URL.revokeObjectURL(link.href); });
