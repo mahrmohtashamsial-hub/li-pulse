@@ -41,6 +41,7 @@ export const createJobSchema = z.object({
   active: z.number().int().nonnegative().default(14),
   occasional: z.number().int().positive().default(60),
   dormant: z.number().int().positive().default(180),
+  max_age_days: z.number().int().min(0).max(365).default(14),
   turnstile_token: z.string().optional(),
 });
 
@@ -51,6 +52,11 @@ export const webhookSchema = z.object({
 
 function json(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json; charset=utf-8" } });
+}
+
+async function sha256(value: string): Promise<string> {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function normalizeUrl(value: unknown): { slug: string; url: string } {
@@ -273,7 +279,7 @@ async function jobResponse(jobId: string, env: JobEnv): Promise<Response> {
 function csv(rows: Array<Record<string, unknown>>): string {
   if (!rows.length) return "";
   const headers = Object.keys(rows[0]); const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-  return [headers.map(escape).join(","), ...rows.map((row) => headers.map((header) => escape(row[header])).join(","))].join("\r\n");
+  return "\uFEFF" + [headers.map(escape).join(","), ...rows.map((row) => headers.map((header) => escape(row[header])).join(","))].join("\r\n");
 }
 
 async function exportJob(jobId: string, env: JobEnv): Promise<Response> {
@@ -300,8 +306,14 @@ export async function createJob(request: Request, env: JobEnv, context: Executio
     costs: parsed.data.costs as Partial<Record<ActorKey, number>> | undefined,
   };
   try { configuredActors(config.actors); } catch (error) { return json({ error: error instanceof Error ? error.message : String(error) }, 400); }
-  await env.DB.prepare("insert into jobs(id,status,created_at,updated_at,config_json,url_count,error) values (?,'QUEUED',?,?,?,?,null)")
-    .bind(jobId, now, now, JSON.stringify(config), rows.length).run();
+  const cacheKey = await sha256(JSON.stringify(config));
+  if (parsed.data.max_age_days > 0) {
+    const cutoff = new Date(Date.now() - parsed.data.max_age_days * 86_400_000).toISOString();
+    const cached = await env.DB.prepare("select id,url_count from jobs where cache_key=? and status='COMPLETE' and created_at>=? order by created_at desc limit 1").bind(cacheKey, cutoff).first<{ id: string; url_count: number }>();
+    if (cached) return json({ job_id: cached.id, status: "COMPLETE", valid_count: cached.url_count, skipped, estimated_max_cost_usd: 0, cache_hit: true }, 200);
+  }
+  await env.DB.prepare("insert into jobs(id,status,created_at,updated_at,config_json,url_count,error,cache_key) values (?,'QUEUED',?,?,?,?,null,?)")
+    .bind(jobId, now, now, JSON.stringify(config), rows.length, cacheKey).run();
   await env.DB.batch(config.actors.map((actor) => env.DB.prepare("insert into job_actors(job_id,actor_key,status) values (?,?,'QUEUED')").bind(jobId, actor.key)));
   context.waitUntil(startJob(jobId, config, parsed.data.api_key, new URL(request.url).origin, env));
   const estimate = config.actors.reduce((sum, actor) => sum + rows.length * actor.maxItems * actor.costPerResultUsd, 0);

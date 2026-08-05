@@ -66,16 +66,6 @@ class BrightDataProvider(ProfileProvider):
         return parse_common(raw, linkedin_url)
 
 
-class ProxycurlProvider(ProfileProvider):
-    async def fetch_raw(self, linkedin_url: str) -> dict[str, Any]:
-        response = await self.client.get(f"{self.config.base_url}/v2/linkedin", params={"url": linkedin_url}, headers={"Authorization": f"Bearer {self.api_key}"})
-        self.check_response(response)
-        return response.json()
-
-    def parse(self, raw: dict[str, Any], linkedin_url: str) -> ProviderProfile:
-        return parse_common(raw, linkedin_url)
-
-
 class MockProvider(ProfileProvider):
     async def fetch_raw(self, linkedin_url: str) -> dict[str, Any]:
         response = await self.client.get(f"{self.config.base_url}/profile", params={"url": linkedin_url}, headers={"Authorization": f"Bearer {self.api_key}"})
@@ -84,4 +74,3 @@ class MockProvider(ProfileProvider):
 
     def parse(self, raw: dict[str, Any], linkedin_url: str) -> ProviderProfile:
         return parse_common(raw, linkedin_url)
-

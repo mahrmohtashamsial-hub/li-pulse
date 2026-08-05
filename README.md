@@ -28,7 +28,6 @@ Provider signup/documentation:
 
 - [Apify LinkedIn actors](https://apify.com/store?search=linkedin%20profile) — actor pricing varies; set the actor ID and its effective per-profile price in `config.yaml`.
 - [Bright Data LinkedIn datasets](https://brightdata.com/products/datasets/linkedin) — plan/dataset pricing varies; set your dataset ID and effective per-profile price.
-- [Proxycurl](https://nubela.co/proxycurl/pricing) — credit usage depends on endpoint/features; set the effective price for the endpoint you use.
 
 The shipped `$0.01` values are placeholders for estimation, not vendor quotes. Confirm current vendor pricing and update `cost_per_profile_usd` before a production run. Provider response shapes/actor schemas can differ; the swappable adapters live in `src/li_pulse/providers/`, and their neutral contract is `ProviderProfile`.
 

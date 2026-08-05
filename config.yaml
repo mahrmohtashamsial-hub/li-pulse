@@ -17,12 +17,3 @@ providers:
     base_url: https://api.brightdata.com
     dataset_id: SET_ME
     cost_per_profile_usd: 0.01
-  proxycurl:
-    api_key_env: PROXYCURL_API_KEY
-    base_url: https://nubela.co/proxycurl/api
-    cost_per_profile_usd: 0.01
-  mock:
-    api_key_env: MOCK_API_KEY
-    base_url: https://mock.li-pulse.test
-    cost_per_profile_usd: 0.00
-

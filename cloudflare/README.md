@@ -80,6 +80,19 @@ credentials, then falls back to the server `APIFY_TOKEN`. A private dataset crea
 with a BYOK token that the server account cannot access will be reported as an actor
 failure; the customer token is not stored to work around that restriction.
 
+Activity jobs accept at most 100 unique LinkedIn profiles and ten Actor instances.
+Actors receive profile URLs in batches, so the Worker does not make one subrequest
+per profile. Identical completed jobs are reused for the configured cache max-age;
+the cache signature includes normalized input rows, actor IDs/configuration, and
+tier thresholds, but never an API key. The UI rejects larger activity lists with a
+clear limit message rather than attempting a partial run.
+
+BYOK credentials travel from the authenticated browser to the li-pulse Worker and
+then to the selected provider over HTTPS. They are not written to D1, Cache API,
+browser storage, or analytics. This is intentionally more precise than claiming a
+browser can contact these providers directly, which would expose credentials and
+often fail CORS restrictions.
+
 ## Local development
 
 ```bash

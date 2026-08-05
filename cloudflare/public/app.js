@@ -1,6 +1,8 @@
 const $ = (id) => document.getElementById(id);
 let rows = [], results = [], activeJobId = null, pollTimer = null;
 let emailResults = [];
+let pollFailures = 0;
+const MAX_ACTIVITY_ROWS = 100;
 const actorLabels = { posts: "Posts + reposts", comments: "Comments", reactions: "Reactions" };
 
 function selectWorkflow(workflow) {
@@ -14,6 +16,8 @@ function selectWorkflow(workflow) {
 document.querySelectorAll("[data-workflow-target]").forEach((button) => button.addEventListener("click", () => { selectWorkflow(button.dataset.workflowTarget); location.hash = button.dataset.workflowTarget; window.scrollTo({ top: 0, behavior: "smooth" }); }));
 
 function parseCsv(text) {
+  if (!text.trim()) throw new Error("The CSV file is empty.");
+  if (text.includes("\0")) throw new Error("This does not appear to be a text CSV file.");
   const matrix = []; let row = [], field = "", quoted = false;
   for (let i = 0; i < text.length; i++) {
     const char = text[i], next = text[i + 1];
@@ -24,7 +28,10 @@ function parseCsv(text) {
     else field += char;
   }
   if (field || row.length) { row.push(field); matrix.push(row); }
+  if (quoted) throw new Error("The CSV contains an unterminated quoted field.");
   const headers = matrix.shift()?.map((value) => value.trim()) || [];
+  if (!headers.length || headers.every((header) => !header)) throw new Error("The CSV header row is missing.");
+  if (new Set(headers).size !== headers.length) throw new Error("The CSV contains duplicate column names.");
   return matrix.map((values) => Object.fromEntries(headers.map((header, index) => [header, values[index] || ""])));
 }
 
@@ -53,9 +60,12 @@ function estimateCost() {
   return selectedActors().reduce((sum, actor) => sum + validCount * actor.limit * actor.cost_per_result_usd, 0);
 }
 function updateEstimate() {
-  const estimate = estimateCost(); const actors = selectedActors(); const linkedinCount = rows.filter((row) => normalizeUrl(row.linkedin_url)).length;
+  const estimate = estimateCost(); const actors = selectedActors(); const linkedinCount = new Set(rows.map((row) => normalizeUrl(row.linkedin_url)).filter(Boolean)).size;
   $("costEstimate").textContent = linkedinCount && actors.length ? `Maximum estimate: $${estimate.toFixed(2)} · actual cost depends on returned results` : "Upload LinkedIn profile URLs and select at least one actor.";
-  $("start").disabled = !linkedinCount || !actors.length || !!activeJobId;
+  const thresholdsOk = Number.isInteger(+$('active').value) && Number.isInteger(+$('occasional').value) && Number.isInteger(+$('dormant').value) && +$('active').value >= 0 && +$('active').value < +$('occasional').value && +$('occasional').value < +$('dormant').value;
+  if (!thresholdsOk) $("costEstimate").textContent = "Tier thresholds must be non-negative whole numbers in strictly increasing order.";
+  else if (linkedinCount > MAX_ACTIVITY_ROWS) $("costEstimate").textContent = `Activity runs are limited to ${MAX_ACTIVITY_ROWS} unique profiles per job.`;
+  $("start").disabled = !linkedinCount || linkedinCount > MAX_ACTIVITY_ROWS || !actors.length || !thresholdsOk || !!activeJobId;
 }
 
 function escapeHtml(value) { const node = document.createElement("div"); node.textContent = String(value); return node.innerHTML; }
@@ -66,7 +76,14 @@ function table(data, container) {
 }
 
 $("file").addEventListener("change", async (event) => {
-  rows = parseCsv(await event.target.files[0].text());
+  const file = event.target.files[0];
+  try {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) throw new Error("CSV exceeds the 10 MB browser limit.");
+    const signature = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+    if (signature[0] === 0x50 && signature[1] === 0x4b) throw new Error("Excel workbooks are not CSV files. Export as CSV UTF-8 first.");
+    rows = parseCsv(await file.text());
+  } catch (error) { rows = []; $("validation").textContent = error.message; table([], $("preview")); updateEstimate(); refreshEmailColumns(); return; }
   const hasLinkedIn = rows.length && Object.hasOwn(rows[0], "linkedin_url");
   if (!rows.length) { $("validation").textContent = "The CSV contains no data rows."; }
   else if (document.body.dataset.workflow === "email") {
@@ -74,12 +91,13 @@ $("file").addEventListener("change", async (event) => {
     $("validation").textContent = `${rows.length} rows loaded · ${emailColumn ? `email column detected: ${emailColumn}` : "select the email column in the verification panel"}`;
   }
   else if (hasLinkedIn) {
-    const valid = rows.filter((row) => normalizeUrl(row.linkedin_url)); const invalid = rows.length - valid.length;
-    $("validation").textContent = `${valid.length} valid LinkedIn URLs · ${invalid} skipped${invalid ? " (malformed or non-profile URLs)" : ""}`;
+    const valid = rows.map((row) => normalizeUrl(row.linkedin_url)).filter(Boolean); const unique = new Set(valid); const duplicates = valid.length - unique.size; const invalid = rows.length - valid.length;
+    $("validation").textContent = `${unique.size} unique valid LinkedIn URLs · ${duplicates} duplicates · ${invalid} malformed/company rows${unique.size > MAX_ACTIVITY_ROWS ? ` · limit is ${MAX_ACTIVITY_ROWS}` : ""}`;
   } else $("validation").textContent = `${rows.length} rows loaded · no linkedin_url column (email verification is still available)`;
   table(rows.slice(0, 5), $("preview")); updateEstimate(); refreshEmailColumns();
 });
 $("actorRows").addEventListener("change", updateEstimate);
+document.querySelectorAll("#active,#occasional,#dormant").forEach((input) => input.addEventListener("input", updateEstimate));
 let nextActor = 4;
 $("addActor").addEventListener("click", () => {
   if (document.querySelectorAll(".actor-option").length >= 10) return;
@@ -113,6 +131,7 @@ async function pollJob(jobId) {
   try {
     const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, { cache: "no-store" });
     const job = await response.json(); if (!response.ok) throw new Error(job.error || "Unable to load job");
+    pollFailures = 0;
     renderProgress(job); results = job.results || []; renderResults();
     $("status").textContent = `${job.status} · ${results.length}/${job.url_count} rows available${job.error ? ` · ${job.error}` : ""}`;
     if (["COMPLETE", "FAILED", "STALE"].includes(job.status)) {
@@ -120,7 +139,11 @@ async function pollJob(jobId) {
       return;
     }
     pollTimer = setTimeout(() => pollJob(jobId), 3000);
-  } catch (error) { $("status").textContent = error.message; pollTimer = setTimeout(() => pollJob(jobId), 5000); }
+  } catch (error) {
+    pollFailures++;
+    if (pollFailures >= 6) { clearTimeout(pollTimer); pollTimer = null; $("status").textContent = `Connection lost after ${pollFailures} attempts. The server job continues safely; reload this page to resume job ${jobId}.`; return; }
+    $("status").textContent = `Connection problem (${pollFailures}/6): ${error.message}. Retrying…`; pollTimer = setTimeout(() => pollJob(jobId), 5000);
+  }
 }
 
 $("start").addEventListener("click", async () => {
@@ -132,11 +155,12 @@ $("start").addEventListener("click", async () => {
     const response = await fetch("/api/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
       rows, actors, api_key: $("apiKey").value || undefined,
       active: +$("active").value, occasional: +$("occasional").value, dormant: +$("dormant").value,
+      max_age_days: +$("maxAge").value,
       turnstile_token: window.liPulseTurnstileToken,
     }) });
     const body = await response.json(); if (!response.ok) throw new Error(body.error || "Job creation failed");
     activeJobId = body.job_id; location.hash = `job=${encodeURIComponent(activeJobId)}`;
-    $("status").textContent = `Job created · ${body.valid_count} valid · ${body.skipped.length} skipped · maximum estimate $${body.estimated_max_cost_usd.toFixed(2)}`;
+    $("status").textContent = body.cache_hit ? `Cache hit · reusing completed results for ${body.valid_count} profiles · no provider charge` : `Job created · ${body.valid_count} valid · ${body.skipped.length} skipped · maximum estimate $${body.estimated_max_cost_usd.toFixed(2)}`;
     await pollJob(activeJobId);
   } catch (error) { activeJobId = null; $("status").textContent = error.message; updateEstimate(); }
   finally { window.liPulseTurnstileToken = ""; window.turnstile?.reset(); }
@@ -170,9 +194,9 @@ function renderEmailResults() {
 }
 function csvText(data) {
   if (!data.length) return ""; const headers = Object.keys(data[0]); const quote = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-  return [headers.map(quote).join(","), ...data.map((row) => headers.map((header) => quote(row[header])).join(","))].join("\r\n");
+  return "\uFEFF" + [headers.map(quote).join(","), ...data.map((row) => headers.map((header) => quote(row[header])).join(","))].join("\r\n");
 }
-$("emailProvider").addEventListener("change", updateEmailEstimate); $("emailColumn").addEventListener("change", updateEmailEstimate); $("emailApiKey").addEventListener("input", updateEmailEstimate);
+$("emailProvider").addEventListener("change", () => { $("emailApiKey").value = ""; emailResults = []; $("emailResultsCard").classList.add("hidden"); $("emailProgress").textContent = "Provider changed; enter the corresponding API key."; updateEmailEstimate(); }); $("emailColumn").addEventListener("change", updateEmailEstimate); $("emailApiKey").addEventListener("input", updateEmailEstimate);
 $("useActivityResults").addEventListener("change", refreshEmailColumns); $("emailFilter").addEventListener("change", renderEmailResults);
 $("verifyEmails").addEventListener("click", async () => {
   const source = emailSourceRows(), column = $("emailColumn").value, candidates = source.map((row, index) => ({ row, index, email: String(row[column] || "").trim() })).filter((item) => item.email);

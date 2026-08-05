@@ -63,7 +63,7 @@
             <label>OCCASIONAL max <span>days</span><input id="occasional" type="number" value="60" min="1"></label>
             <label>DORMANT max <span>days</span><input id="dormant" type="number" value="180" min="2"></label>
           </div>
-          <div class="privacy"><span aria-hidden="true">◇</span><p>Your provider key is transmitted over HTTPS for this run and is never stored in our database or browser storage.</p></div>
+          <div class="privacy"><span aria-hidden="true">◇</span><p>A BYOK provider key is sent over HTTPS to the authenticated li-pulse Worker, used to call Apify, and never written to D1, Cache API, browser storage, or analytics. Leave it blank to use the configured server key.</p></div>
           <div class="turnstile-wrap"><div class="cf-turnstile" data-sitekey="0x4AAAAAAEF6g0z_NurCOZQA" data-callback="onTurnstileSuccess" data-expired-callback="onTurnstileExpired" data-theme="dark"></div></div>
           <button id="start" class="btn btn-primary btn-block" disabled>Analyze profiles <span aria-hidden="true">→</span></button>
           <div id="status" class="status" role="status"></div>
@@ -89,7 +89,7 @@
           <div class="grid grid-main">
             <label>Email column<select id="emailColumn"><option value="">Upload a CSV first</option></select></label>
             <label>Verification provider<select id="emailProvider"><option value="millionverifier">MillionVerifier · ~$0.001/email</option><option value="debounce">DeBounce · ~$0.0008/email</option><option value="neverbounce">NeverBounce · ~$0.001/email</option><option value="zerobounce">ZeroBounce · ~$0.006–0.009/email</option></select></label>
-            <label>Provider API key <span>used for this run only</span><input id="emailApiKey" type="password" autocomplete="off" placeholder="Never stored"></label>
+            <label>Provider API key <span>used for this run only</span><input id="emailApiKey" type="password" autocomplete="off" placeholder="Sent through li-pulse to the selected provider; never stored"></label>
             <label>Cache max age <span>days</span><input id="emailMaxAge" type="number" value="14" min="0" max="30"></label>
           </div>
           <label class="source-toggle"><input id="useActivityResults" type="checkbox"><span>Use the latest LinkedIn activity results instead of the uploaded rows</span></label>
