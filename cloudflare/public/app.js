@@ -3,6 +3,16 @@ let rows = [], results = [], activeJobId = null, pollTimer = null;
 let emailResults = [];
 const actorLabels = { posts: "Posts + reposts", comments: "Comments", reactions: "Reactions" };
 
+function selectWorkflow(workflow) {
+  document.body.dataset.workflow = workflow;
+  document.querySelectorAll("[data-workflow-target]").forEach((button) => { const selected = button.dataset.workflowTarget === workflow; button.classList.toggle("active", selected); button.setAttribute("aria-selected", String(selected)); });
+  $("uploadHeading").textContent = workflow === "email" ? "Upload contacts" : "Upload prospects";
+  $("uploadRequirement").innerHTML = workflow === "email" ? 'CSV containing an <code>email</code> column, or select another column below' : 'CSV containing a <code>linkedin_url</code> column';
+  const cta = document.querySelector(".nav-cta"); cta.textContent = workflow === "email" ? "Verify emails" : "Analyze profiles"; cta.href = workflow === "email" ? "#emailVerification" : "#configure";
+  if (workflow === "email") refreshEmailColumns();
+}
+document.querySelectorAll("[data-workflow-target]").forEach((button) => button.addEventListener("click", () => { selectWorkflow(button.dataset.workflowTarget); location.hash = button.dataset.workflowTarget; window.scrollTo({ top: 0, behavior: "smooth" }); }));
+
 function parseCsv(text) {
   const matrix = []; let row = [], field = "", quoted = false;
   for (let i = 0; i < text.length; i++) {
@@ -59,6 +69,10 @@ $("file").addEventListener("change", async (event) => {
   rows = parseCsv(await event.target.files[0].text());
   const hasLinkedIn = rows.length && Object.hasOwn(rows[0], "linkedin_url");
   if (!rows.length) { $("validation").textContent = "The CSV contains no data rows."; }
+  else if (document.body.dataset.workflow === "email") {
+    const emailColumn = Object.keys(rows[0]).find((header) => header.toLowerCase() === "email");
+    $("validation").textContent = `${rows.length} rows loaded · ${emailColumn ? `email column detected: ${emailColumn}` : "select the email column in the verification panel"}`;
+  }
   else if (hasLinkedIn) {
     const valid = rows.filter((row) => normalizeUrl(row.linkedin_url)); const invalid = rows.length - valid.length;
     $("validation").textContent = `${valid.length} valid LinkedIn URLs · ${invalid} skipped${invalid ? " (malformed or non-profile URLs)" : ""}`;
@@ -133,6 +147,7 @@ $("download").addEventListener("click", () => { if (activeJobId || location.hash
 
 const resumed = location.hash.match(/^#job=(.+)$/);
 if (resumed) { activeJobId = decodeURIComponent(resumed[1]); $("start").disabled = true; pollJob(activeJobId); }
+else if (location.hash === "#email") selectWorkflow("email");
 
 const emailRates = { millionverifier: 0.001, debounce: 0.0008, neverbounce: 0.001, zerobounce: 0.009 };
 function emailSourceRows() { return $("useActivityResults").checked && results.length ? results : rows; }

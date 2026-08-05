@@ -13,15 +13,15 @@
   </script>
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
-<body>
+<body data-workflow="activity">
   <nav class="nav">
     <a class="brand" href="#top" aria-label="li-pulse home"><span class="brand-mark">lp</span><span>li-pulse</span></a>
-    <div class="nav-tags"><span class="tag tag-accent">BYOK</span><span class="tag">No scraping</span></div>
+    <div class="workflow-tabs" role="tablist" aria-label="li-pulse tools"><button id="activityTab" class="workflow-tab active" role="tab" aria-selected="true" data-workflow-target="activity">LinkedIn Activity</button><button id="emailTab" class="workflow-tab" role="tab" aria-selected="false" data-workflow-target="email">Email Verification</button></div>
     <div class="nav-tags"><a class="btn btn-primary nav-cta" href="#configure">Analyze profiles</a><a class="tag" href="/auth/logout">Sign out</a></div>
   </nav>
 
   <main id="top">
-    <section class="hero section">
+    <section class="hero section" data-workflow-panel="activity">
       <div class="wrap">
         <p class="kicker">For BDR teams</p>
         <h1>Know who is worth reaching on LinkedIn.</h1>
@@ -31,11 +31,11 @@
       </div>
     </section>
 
-    <section class="section" id="upload">
+    <section class="section" id="upload" data-workflow-panel="shared">
       <div class="wrap content-width">
-        <div class="step-heading"><span class="step-num">1</span><div><p class="step-label">Input</p><h2>Upload prospects</h2></div></div>
+        <div class="step-heading"><span class="step-num">1</span><div><p class="step-label">Input</p><h2 id="uploadHeading">Upload prospects</h2></div></div>
         <div class="card upload-card">
-          <p class="filetype">CSV containing a <code>linkedin_url</code> column</p>
+          <p id="uploadRequirement" class="filetype">CSV containing a <code>linkedin_url</code> column</p>
           <label class="dropzone" for="file"><span class="upload-icon" aria-hidden="true">↑</span><strong>Drop your CSV here, or click to browse</strong><span>All original columns are preserved</span><input id="file" type="file" accept=".csv"></label>
           <div id="validation" class="muted">No file selected.</div>
           <div id="preview" class="table-wrap"></div>
@@ -43,7 +43,7 @@
       </div>
     </section>
 
-    <section class="section" id="configure">
+    <section class="section" id="configure" data-workflow-panel="activity">
       <div class="wrap content-width">
         <div class="step-heading"><span class="step-num">2</span><div><p class="step-label">Settings</p><h2>Configure analysis</h2></div></div>
         <div class="card">
@@ -72,7 +72,7 @@
       </div>
     </section>
 
-    <section id="resultsCard" class="section hidden">
+    <section id="resultsCard" class="section hidden" data-workflow-panel="activity">
       <div class="wrap">
         <div class="step-heading"><span class="step-num">3</span><div><p class="step-label">Output</p><h2>Results</h2></div></div>
         <div class="card results-card">
@@ -82,7 +82,7 @@
       </div>
     </section>
 
-    <section id="emailVerification" class="section">
+    <section id="emailVerification" class="section" data-workflow-panel="email">
       <div class="wrap content-width">
         <div class="step-heading"><span class="step-num">4</span><div><p class="step-label">Email verification</p><h2>Verify prospect emails</h2></div></div>
         <div class="card">
@@ -100,7 +100,7 @@
       </div>
     </section>
 
-    <section id="emailResultsCard" class="section hidden">
+    <section id="emailResultsCard" class="section hidden" data-workflow-panel="email">
       <div class="wrap">
         <div class="step-heading"><span class="step-num">5</span><div><p class="step-label">Email results</p><h2>Verification results</h2></div></div>
         <div class="card results-card">
